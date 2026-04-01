@@ -1,0 +1,45 @@
+# Apache SPA (Single Page Application) Routing Configuration
+# This ensures React Router works correctly on refresh/direct URL access
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Don't rewrite files or directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # Rewrite everything else to index.html to let React Router handle routing
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# Security Headers (complement the CSP meta tags)
+<IfModule mod_headers.c>
+    # X-Frame-Options to prevent clickjacking
+    Header always set X-Frame-Options "DENY"
+    
+    # X-Content-Type-Options to prevent MIME sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # X-XSS-Protection
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Enable compression for better performance
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+</IfModule>

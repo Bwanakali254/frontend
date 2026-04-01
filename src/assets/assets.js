@@ -4,6 +4,7 @@ import hero2 from './hero2.avif';
 import hero from './hero.png';
 import aboutUs from './about -us.jpg';
 import contactUs from './contact-us.jpg';
+import whatsappLogo from './whatsapp-logo.avif';
 
 // Product Cover Images
 import batteryPack from './products/battery pack.avif';
@@ -50,6 +51,7 @@ export const assets = {
     hero,
     aboutUs,
     contactUs,
+    whatsappLogo,
     
     // Products
     batteryPack,

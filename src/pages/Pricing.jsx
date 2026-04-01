@@ -1,7 +1,57 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 import { motion } from 'framer-motion'
+
+/**
+ * Load reCAPTCHA v3 script dynamically
+ */
+const loadRecaptchaScript = (siteKey) => {
+  return new Promise((resolve, reject) => {
+    if (window.grecaptcha) {
+      resolve();
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      window.grecaptcha.ready(() => {
+        resolve();
+      });
+    };
+    
+    script.onerror = () => {
+      reject(new Error('Failed to load reCAPTCHA script'));
+    };
+    
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * Execute reCAPTCHA and get token
+ */
+const executeRecaptcha = async (siteKey, action = 'submit') => {
+  return new Promise((resolve, reject) => {
+    if (!window.grecaptcha) {
+      reject(new Error('reCAPTCHA not loaded'));
+      return;
+    }
+    
+    window.grecaptcha.ready(async () => {
+      try {
+        const token = await window.grecaptcha.execute(siteKey, { action });
+        resolve(token);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+};
 
 const SolarSolution = () => {
     const [formData, setFormData] = useState({
@@ -16,11 +66,32 @@ const SolarSolution = () => {
     });
     
     const [isLoading, setIsLoading] = useState(false);
+    const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState({
         productInterest: false,
         contactMethod: false
     });
     const [focusedField, setFocusedField] = useState(null);
+
+    const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+    const backendUrl = 'https://api.sunmega.co.ke';
+
+    // Load reCAPTCHA on component mount
+    useEffect(() => {
+        if (recaptchaSiteKey) {
+            loadRecaptchaScript(recaptchaSiteKey)
+                .then(() => {
+                    setRecaptchaLoaded(true);
+                    console.log('[reCAPTCHA] v3 loaded successfully');
+                })
+                .catch(error => {
+                    console.error('[reCAPTCHA] Failed to load:', error);
+                    toast.error('Security verification failed to load. Please refresh the page.');
+                });
+        } else {
+            console.warn('[reCAPTCHA] Site key not configured');
+        }
+    }, [recaptchaSiteKey]);
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -75,29 +146,29 @@ const SolarSolution = () => {
             toast.error('Please enter a valid email address');
             return;
         }
+
+        // Check if reCAPTCHA is loaded
+        if (!recaptchaLoaded || !recaptchaSiteKey) {
+            toast.error('Security verification not ready. Please wait a moment and try again.');
+            return;
+        }
         
         try {
             setIsLoading(true);
-            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
             
-            const inquiryMessage = `
-Name: ${formData.firstName} ${formData.lastName}
-Phone: ${formData.phone}
-Email: ${formData.email}
-Location: ${formData.location}
-Product Interest: ${formData.productInterest}
-Preferred Contact: ${formData.contactMethod}
-Message: ${formData.message}
-            `.trim();
+            // Execute reCAPTCHA to get token
+            const recaptchaToken = await executeRecaptcha(recaptchaSiteKey, 'submit');
             
             const response = await axios.post(backendUrl + '/api/inquiry', {
-                name: `${formData.firstName} ${formData.lastName}`,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
                 email: formData.email,
                 phone: formData.phone,
                 location: formData.location,
-                subject: 'Solar Installation Inquiry - Pricing',
-                message: inquiryMessage,
-                inquiryType: 'pricing'
+                productInterest: formData.productInterest,
+                message: formData.message,
+                contactMethod: formData.contactMethod,
+                recaptchaToken: recaptchaToken
             });
             
             if (response.data.success) {
@@ -118,6 +189,7 @@ Message: ${formData.message}
             
             setIsLoading(false);
         } catch (error) {
+            console.error('[Submit Error]', error);
             toast.error(error.response?.data?.message || 'Failed to submit inquiry');
             setIsLoading(false);
         }
@@ -306,15 +378,34 @@ Message: ${formData.message}
                         variants={formRowVariants}
                         className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6"
                     >
-                        <div>
+                        <div className="relative">
                             <label className="block text-[14px] font-medium text-[#1f2937] mb-2">
                                 Location / Address
                             </label>
-                            <InputWithIcon
+                            <select
                                 name="location"
-                                placeholder="Nairobi, Karen"
                                 value={formData.location}
-                            />
+                                onChange={handleChange}
+                                className="w-full h-11.5 px-4 pr-10 border border-[#d1d5db] rounded-3xl bg-white text-[14px] text-[#1f2937] cursor-pointer focus:border-[#059669] focus:outline-none focus:shadow-[0_0_0_3px_rgba(5,150,105,0.1)] appearance-none"
+                            >
+                                <option value="" hidden>Select Location</option>
+                                <option value="nairobi">Nairobi</option>
+                                <option value="mombasa">Mombasa</option>
+                                <option value="kisumu">Kisumu</option>
+                                <option value="nakuru">Nakuru</option>
+                                <option value="eldoret">Eldoret</option>
+                                <option value="kiambu">Kiambu</option>
+                                <option value="kajiado">Kajiado</option>
+                                <option value="machakos">Machakos</option>
+                                <option value="muranga">Murang'a</option>
+                                <option value="nyeri">Nyeri</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 translate-y-1 pointer-events-none">
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
                         <div className="relative">
                             <label className="block text-[14px] font-medium text-[#1f2937] mb-2">

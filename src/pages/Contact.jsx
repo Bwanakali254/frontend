@@ -1,14 +1,64 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { assets } from '../assets/assets'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { motion } from 'framer-motion'
 
+/**
+ * Load reCAPTCHA v3 script dynamically
+ */
+const loadRecaptchaScript = (siteKey) => {
+  return new Promise((resolve, reject) => {
+    if (window.grecaptcha) {
+      resolve();
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      window.grecaptcha.ready(() => {
+        resolve();
+      });
+    };
+    
+    script.onerror = () => {
+      reject(new Error('Failed to load reCAPTCHA script'));
+    };
+    
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * Execute reCAPTCHA and get token
+ */
+const executeRecaptcha = async (siteKey, action = 'submit') => {
+  return new Promise((resolve, reject) => {
+    if (!window.grecaptcha) {
+      reject(new Error('reCAPTCHA not loaded'));
+      return;
+    }
+    
+    window.grecaptcha.ready(async () => {
+      try {
+        const token = await window.grecaptcha.execute(siteKey, { action });
+        resolve(token);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+};
+
 const Title = ({text1,text2}) => {
   return (
     <div className='inline-flex gap-2 items-center mb-3'>
      <p className='text-gray-500'>{text1} <span className='text-gray-700 font-medium'>{text2}</span></p>
-     <p className='w-8 sm:w-12 h-px sm:h-[2px] bg-gray-700'></p>
+     <p className='w-8 sm:w-12 h-px sm:h-0.5 bg-gray-700'></p>
     </div>
   )
 }
@@ -19,6 +69,27 @@ const Contact = () => {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  const backendUrl = 'https://api.sunmega.co.ke';
+
+  // Load reCAPTCHA on component mount
+  useEffect(() => {
+    if (recaptchaSiteKey) {
+      loadRecaptchaScript(recaptchaSiteKey)
+        .then(() => {
+          setRecaptchaLoaded(true);
+          console.log('[reCAPTCHA] v3 loaded successfully');
+        })
+        .catch(error => {
+          console.error('[reCAPTCHA] Failed to load:', error);
+          toast.error('Security verification failed to load. Please refresh the page.');
+        });
+    } else {
+      console.warn('[reCAPTCHA] Site key not configured');
+    }
+  }, [recaptchaSiteKey]);
 
   const fadeInUp = {
     initial: { opacity: 0, y: 30 },
@@ -36,14 +107,25 @@ const Contact = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
+    // Check if reCAPTCHA is loaded
+    if (!recaptchaLoaded || !recaptchaSiteKey) {
+      toast.error('Security verification not ready. Please wait a moment and try again.');
+      return;
+    }
+    
     try {
       setIsLoading(true);
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+      
+      // Execute reCAPTCHA to get token
+      const recaptchaToken = await executeRecaptcha(recaptchaSiteKey, 'submit');
+      
       const response = await axios.post(backendUrl + '/api/contact', {
         name,
         email,
         subject,
-        message
+        message,
+        recaptchaToken
       });
       if (response.data.success) {
         toast.success(response.data.message || 'Message sent successfully!');
@@ -150,13 +232,21 @@ const Contact = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              whileHover={{ scale: 1.02, boxShadow: "0 5px 15px rgba(0,0,0,0.2)" }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: isLoading ? 1 : 1.02, boxShadow: "0 5px 15px rgba(0,0,0,0.2)" }}
+              whileTap={{ scale: isLoading ? 1 : 0.98 }}
               type='submit' 
               disabled={isLoading}
-              className={`w-full bg-green-500 hover:bg-amber-500 text-white py-3 mt-4 transition-all duration-300 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              className={`w-full bg-green-500 hover:bg-amber-500 text-white py-3 mt-4 transition-all duration-300 flex items-center justify-center gap-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              {isLoading ? 'Sending...' : 'Send message'}
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Sending...
+                </>
+              ) : 'Send message'}
             </motion.button>
           </motion.form>
         </motion.div>

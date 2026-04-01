@@ -249,7 +249,7 @@ const Home = () => {
     event.preventDefault();
     try {
       setIsLoading(true);
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+      const backendUrl = 'https://api.sunmega.co.ke';
       const response = await axios.post(backendUrl + '/api/newsletter/subscribe', {
         email
       });
@@ -270,7 +270,7 @@ const Home = () => {
   return (
     <div>
       {/* ============ HERO SECTION ============ */}
-      <div className="relative overflow-hidden h-96 sm:h-[28rem] md:h-[32rem] lg:h-[36rem]">
+      <div className="relative overflow-hidden h-96 sm:h-112 md:h-128 lg:h-144">
         {/* Background hero image */}
         <motion.img
           initial={{ scale: 1.1, opacity: 0 }}

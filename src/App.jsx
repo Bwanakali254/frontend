@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import Header from './components/Header'
 import Footer from './components/Footer'
-import GetQuoteWidget from './components/GetQuoteWidget'
 import WhatsAppWidget from './components/WhatsAppWidget'
 import CookieConsent from './components/CookieConsent'
 import Home from './pages/Home'
@@ -17,6 +18,7 @@ function App() {
   return (
     <Router>
       <div className="px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+        <ToastContainer position="top-right" autoClose={3000} />
         <Header />
         <Routes>
           <Route path="/" element={<Home />} />
@@ -29,7 +31,6 @@ function App() {
           <Route path="/terms-and-conditions" element={<Terms />} />
         </Routes>
         <Footer />
-        <GetQuoteWidget />
         <WhatsAppWidget />
         <CookieConsent />
       </div>

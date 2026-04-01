@@ -70,6 +70,9 @@ const Footer = () => {
                 <motion.li whileHover="hover" variants={linkHoverVariants}>
                   <Link to="/terms-and-conditions" className='hover:text-gray-900 cursor-pointer inline-block'>Terms & Conditions</Link>
                 </motion.li>
+                <motion.li whileHover="hover" variants={linkHoverVariants}>
+                  <a href="http://localhost:5174" target="_blank" rel="noopener noreferrer" className='hover:text-gray-900 cursor-pointer inline-block text-xs text-gray-400'>Admin</a>
+                </motion.li>
             </ul>
          </motion.div>
 

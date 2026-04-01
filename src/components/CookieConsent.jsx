@@ -4,10 +4,15 @@ import { X, Cookie } from 'lucide-react'
 
 const CookieConsent = () => {
   const [isVisible, setIsVisible] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
+    // Check localStorage after mount to avoid SSR issues
     const hasConsent = localStorage.getItem('cookieConsent')
+    console.log('[CookieConsent] Checking consent:', hasConsent)
     if (!hasConsent) {
+      console.log('[CookieConsent] No consent found, showing banner')
       setIsVisible(true)
     }
   }, [])
